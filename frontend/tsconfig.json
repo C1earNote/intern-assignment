@@ -18,7 +18,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": "src",  // Adds base URL resolution for modules
+    "paths": {
+      "@redux/*": ["redux/*"]  // Maps `@redux` to the `src/redux/` folder
+    }
   },
   "include": [
     "src"
