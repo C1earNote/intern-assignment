@@ -15,17 +15,25 @@ router.get('/stocks', (req, res) => {
 router.post('/stocks/:id', (req, res) => {
   const id = req.params.id;
   const body = req.body;
-  console.log(body);
+
+  console.log("Request Body:", body);
+
   if (!body.duration) {
-    res.status(400).json({ message: 'Duration is required' });
+    return res.status(400).json({ message: 'Duration is required' });
   }
+
   const reqBody = {
-    id: id,
-    duration: (body.duration).toLowerCase(),
-  }
+    id,
+    duration: body.duration.toLowerCase(),
+  };
+
   const response = pollStock(reqBody);
+
+  console.log("Response Sent:", response);
+
   res.json(response);
 });
+
 
 
 export default router;

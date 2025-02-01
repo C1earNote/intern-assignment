@@ -1,84 +1,49 @@
-import React, { useState } from "react";  // Import useState
+import React from "react";
 import { Line } from "react-chartjs-2";
 import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
-import { ChartData, ChartOptions } from "chart.js";
-import { CircularProgress, Box, Typography } from "@mui/material";
-
-// StockEntry type for better type-checking
-interface StockEntry {
-  timestamp: string;
-  price: number;
-}
+import { ChartData } from "chart.js";
+import { CircularProgress, Typography } from "@mui/material";
 
 const StockChart = () => {
   const selectedStock = useSelector((state: RootState) => state.stocks.selectedStock);
+  const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
   const stockData = useSelector((state: RootState) => state.stocks.stockData);
+  const loading = useSelector((state: RootState) => state.stocks.loading);
+  const error = useSelector((state: RootState) => state.stocks.error);
 
-  // State for the selected duration (defaults to 1Y)
-  const [duration, setDuration] = useState<string>("1y");
+  if (loading) return <CircularProgress style={{ margin: '20px auto' }} />;
+  
+  if (error) return <Typography color="error">{error}</Typography>;
 
-  // If no selectedStock or data for the selectedStock, show loading
-  if (!selectedStock || !stockData[selectedStock.id] || !stockData[selectedStock.id][duration]) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
-        <CircularProgress />
-      </Box>
-    );
+  if (!selectedStock || !selectedDuration || !stockData[selectedStock.id]?.[selectedDuration]) {
+    return <Typography>Select a stock and duration to view data</Typography>;
   }
 
-  const dataset: StockEntry[] = stockData[selectedStock.id][duration] || [];
-
+  const dataset = stockData[selectedStock.id][selectedDuration];
+  console.log("Dataset:", dataset);
+  
   const chartData: ChartData<"line"> = {
     labels: dataset.map((entry) => new Date(entry.timestamp).toLocaleDateString()),
     datasets: [
       {
-        label: selectedStock.name,
+        label: `${selectedStock.name} (${selectedDuration.toUpperCase()})`,
         data: dataset.map((entry) => entry.price),
-        borderColor: "rgb(75, 192, 192)",
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
+        borderColor: "#007bff",
+        backgroundColor: "rgba(0, 123, 255, 0.1)",
         borderWidth: 2,
-        pointRadius: 4,
-        pointBackgroundColor: "rgb(75, 192, 192)",
+        pointRadius: 3,
       },
     ],
   };
 
-  const chartOptions: ChartOptions<"line"> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        grid: {
-          display: true,
-        },
-      },
-      y: {
-        grid: {
-          display: true,
-        },
-        beginAtZero: true,
-      },
-    },
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const value = context.raw as number; // Cast to number to fix type issue
-            return `$${value.toFixed(2)}`; // Format the tooltip label
-          },
-        },
-      },
-    },
-  };
-
   return (
-    <Box sx={{ height: "400px", padding: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Stock Price: {selectedStock.name} ({duration.toUpperCase()})
+    <div style={{ width: "80%", margin: "auto", padding: "20px" }}>
+      <Typography variant="h5" gutterBottom>
+        {selectedStock.name} Stock Price
       </Typography>
-      <Line data={chartData} options={chartOptions} />
-    </Box>
+      <Line data={chartData} />
+    </div>
   );
 };
 
