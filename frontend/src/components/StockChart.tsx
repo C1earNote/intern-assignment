@@ -1,48 +1,54 @@
-import React from "react";
-import { Line } from "react-chartjs-2";
-import { useSelector } from "react-redux";
-import { RootState } from "../redux/store";
-import { ChartData } from "chart.js";
-import { CircularProgress, Typography } from "@mui/material";
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { CircularProgress, Typography, Box } from '@mui/material';
+import StockRechart from './StockRechart';
+import { RootState } from '../redux/store';
 
-const StockChart = () => {
+const StockChart: React.FC = () => {
   const selectedStock = useSelector((state: RootState) => state.stocks.selectedStock);
-  const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
   const stockData = useSelector((state: RootState) => state.stocks.stockData);
   const loading = useSelector((state: RootState) => state.stocks.loading);
   const error = useSelector((state: RootState) => state.stocks.error);
 
-  if (loading) return <CircularProgress style={{ margin: '20px auto' }} />;
-  
+  if (loading) return <div className="loading-indicator"><CircularProgress /></div>;
   if (error) return <Typography color="error">{error}</Typography>;
 
-  if (!selectedStock || !selectedDuration || !stockData[selectedStock.id]?.[selectedDuration]) {
-    return <Typography>Select a stock and duration to view data</Typography>;
+  if (!selectedStock) {
+    return (
+      <Box
+        className="blank-box"
+        sx={{
+          width: '80%',
+          margin: 'auto',
+          padding: '20px',
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
+        }}
+      />
+    );
   }
 
-  const dataset = stockData[selectedStock.id][selectedDuration];
-  console.log("Dataset:", dataset);
-  
-  const chartData: ChartData<"line"> = {
-    labels: dataset.map((entry) => new Date(entry.timestamp).toLocaleDateString()),
-    datasets: [
-      {
-        label: `${selectedStock.name} (${selectedDuration.toUpperCase()})`,
-        data: dataset.map((entry) => entry.price),
-        borderColor: "#007bff",
-        backgroundColor: "rgba(0, 123, 255, 0.1)",
-        borderWidth: 2,
-        pointRadius: 3,
-      },
-    ],
-  };
-
   return (
-    <div style={{ width: "80%", margin: "auto", padding: "20px" }}>
+    <div className="chart-container">
       <Typography variant="h5" gutterBottom>
         {selectedStock.name} Stock Price
       </Typography>
-      <Line data={chartData} />
+      {selectedStock.available.map((duration) => {
+        const dataset = stockData[selectedStock.id]?.[duration];
+        return (
+          <Box key={duration} mb={4}>
+            <Typography variant="h6" gutterBottom>
+              {duration.toUpperCase()}
+            </Typography>
+            {dataset ? (
+              <StockRechart data={dataset} />
+            ) : (
+              <Typography>Loading data for {duration}...</Typography>
+            )}
+          </Box>
+        );
+      })}
     </div>
   );
 };

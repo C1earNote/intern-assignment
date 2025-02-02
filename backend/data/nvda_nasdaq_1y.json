@@ -1514,6 +1514,11 @@
       "price": 128.99,
       "change": 66.52,
       "change_percent": 1.0648
+    },
+    "2025-01-29 16:00:00": {
+      "price": 128.99,
+      "change": 66.52,
+      "change_percent": 1.0648
     }
   },
   "key_events": [],

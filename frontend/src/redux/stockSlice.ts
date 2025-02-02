@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 
 // Define StockEntry type
-interface StockEntry {
+export interface StockEntry {
   timestamp: string;
   price: number;
 }
