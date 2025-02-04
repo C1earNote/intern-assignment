@@ -26,7 +26,7 @@ interface StockDataState {
 interface StockState {
   stocks: Stock[];
   selectedStock: Stock | null;
-  selectedDuration: string | null;
+  selectedDuration: string; // Ensure it's always a string
   stockData: StockDataState;
   loading: boolean;
   error: string | null;
@@ -36,19 +36,18 @@ interface StockState {
 const initialState: StockState = {
   stocks: [],
   selectedStock: null,
-  selectedDuration: null,
+  selectedDuration: "all", // Default to "all"
   stockData: {},
   loading: false,
   error: null,
 };
 
 // ✅ Fetch list of stocks
-// ✅ Change API URLs to match your backend
 export const fetchStocks = createAsyncThunk<Stock[], void>(
   "stocks/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get("http://localhost:3000/api/stocks");  // ⬅️ UPDATED URL
+      const response = await axios.get("http://localhost:3000/api/stocks");
       return response.data;
     } catch (error: any) {
       console.error("Error fetching stocks:", error);
@@ -57,6 +56,7 @@ export const fetchStocks = createAsyncThunk<Stock[], void>(
   }
 );
 
+// ✅ Fetch stock data (for a specific duration)
 export const fetchStockData = createAsyncThunk<
   { id: string; duration: string; data: StockEntry[] },
   { id: string; duration: string }
@@ -64,7 +64,7 @@ export const fetchStockData = createAsyncThunk<
   "stocks/fetchData",
   async ({ id, duration }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });  // ⬅️ UPDATED URL
+      const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });
       return { id, duration, data: response.data };
     } catch (error: any) {
       console.error("Error fetching stock data:", error);
@@ -80,11 +80,14 @@ const stockSlice = createSlice({
   reducers: {
     setSelectedStock: (state, action: PayloadAction<Stock | null>) => {
       state.selectedStock = action.payload;
-      state.selectedDuration = null;
+      state.selectedDuration = "all"; // ✅ Reset to "all" when switching stocks
       state.stockData = {}; // ✅ Clear stock data when switching stocks
     },
     setSelectedDuration: (state, action: PayloadAction<string>) => {
-      state.selectedDuration = action.payload;
+      state.selectedDuration = action.payload || "all"; // ✅ Ensure it's always a string
+    },
+    clearStockData: (state, action: PayloadAction<{ id: string }>) => {
+      delete state.stockData[action.payload.id]; // ✅ Properly remove stock data
     },
   },
   extraReducers: (builder) => {
@@ -101,16 +104,23 @@ const stockSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(fetchStockData.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchStockData.fulfilled, (state, action) => {
         const { id, duration, data } = action.payload;
-        if (!state.stockData[id]) state.stockData[id] = {};
-        state.stockData[id][duration] = data.slice(); // ✅ Immutable update
-      })
+      
+        console.log(`Redux updated: ${id} - ${duration}`, data); // ✅ Debugging log
+      
+        state.stockData[id] = { [duration]: data.slice() }; // ✅ Store only selected duration
+        state.loading = false;
+      })      
       .addCase(fetchStockData.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
       });
   },
 });
 
-export const { setSelectedStock, setSelectedDuration } = stockSlice.actions;
+export const { setSelectedStock, setSelectedDuration, clearStockData } = stockSlice.actions;
 export default stockSlice.reducer;

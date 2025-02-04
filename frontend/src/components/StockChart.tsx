@@ -7,50 +7,37 @@ import { RootState } from '../redux/store';
 const StockChart: React.FC = () => {
   const selectedStock = useSelector((state: RootState) => state.stocks.selectedStock);
   const stockData = useSelector((state: RootState) => state.stocks.stockData);
+  const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
   const loading = useSelector((state: RootState) => state.stocks.loading);
   const error = useSelector((state: RootState) => state.stocks.error);
 
   if (loading) return <div className="loading-indicator"><CircularProgress /></div>;
   if (error) return <Typography color="error">{error}</Typography>;
 
-  if (!selectedStock) {
-    return (
-      <Box
-        className="blank-box"
-        sx={{
-          width: '80%',
-          margin: 'auto',
-          padding: '20px',
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
-        }}
-      />
-    );
+  if (!selectedStock || !selectedDuration) {
+    return null; // Don't render anything if no stock or duration is selected
   }
 
+  const dataset = stockData[selectedStock.id]?.[selectedDuration];
+
+  if (!dataset) return null; // Hide if no data available
+
+
   return (
-    <div className="chart-container">
-      <Typography variant="h5" gutterBottom>
-        {selectedStock.name} Stock Price
+  <div className="chart-container">
+    <Typography variant="h5" gutterBottom>
+      {selectedStock.name} Stock Price
+    </Typography>
+
+    <Box mb={4} sx={{ padding: '16px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)' }}>
+      <Typography variant="h6" gutterBottom align="center">
+        {selectedDuration.toUpperCase()}
       </Typography>
-      {selectedStock.available.map((duration) => {
-        const dataset = stockData[selectedStock.id]?.[duration];
-        return (
-          <Box key={duration} mb={4}>
-            <Typography variant="h6" gutterBottom>
-              {duration.toUpperCase()}
-            </Typography>
-            {dataset ? (
-              <StockRechart data={dataset} />
-            ) : (
-              <Typography>Loading data for {duration}...</Typography>
-            )}
-          </Box>
-        );
-      })}
-    </div>
-  );
+      <StockRechart data={dataset} />
+    </Box>
+  </div>
+);
+
 };
 
 export default StockChart;
