@@ -4,4 +4,4 @@ export interface StockEntry {
     change: number;
     change_percent: number;
     volume: number;
-  }
+}
