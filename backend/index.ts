@@ -1,9 +1,20 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { getAllStockMeta, pollStock, Status } from "./main/service";
+import http from "http";
+import { Server } from "socket.io";
+import { getAllStockMeta, pollStock, Status, setSocketServer } from "./main/service";
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:3001', // Adjust this to your frontend URL
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
 
 app.use(cors({
   origin: 'http://localhost:3001',
@@ -53,6 +64,15 @@ app.post("/api/stocks/:id", (req: Request, res: Response) => {
   }
 });
 
-app.listen(port, () => {
+io.on('connection', (socket) => {
+  console.log('a user connected');
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+});
+
+setSocketServer(io);
+
+server.listen(port, () => {
   console.log(`🚀 Server is running on http://localhost:${port}`);
 });

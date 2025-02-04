@@ -1,28 +1,19 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
+import { StockEntry } from '../types';
 
-// Define StockEntry type
-export interface StockEntry {
-  timestamp: string;
-  price: number;
-}
-
-// Define Stock type for each stock in the state
-interface Stock {
-  id: string;
-  name: string;
-  symbol: string;
-  available: string[]; // Available durations (e.g., ["1D", "1W", "1M", "1Y"])
-}
-
-// Define the structure of stock data in the state
 interface StockDataState {
-  [stockId: string]: {
-    [duration: string]: StockEntry[];
+  [key: string]: {
+    [key: string]: StockEntry[];
   };
 }
 
-// Define the Redux state shape
+interface Stock {
+  id: string;
+  name: string;
+  available: string[];
+}
+
 interface StockState {
   stocks: Stock[];
   selectedStock: Stock | null;
@@ -32,7 +23,6 @@ interface StockState {
   error: string | null;
 }
 
-// ✅ Initial state
 const initialState: StockState = {
   stocks: [],
   selectedStock: null,
@@ -42,49 +32,35 @@ const initialState: StockState = {
   error: null,
 };
 
-// ✅ Fetch list of stocks
-// ✅ Change API URLs to match your backend
-export const fetchStocks = createAsyncThunk<Stock[], void>(
-  "stocks/fetchAll",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await axios.get("http://localhost:3000/api/stocks");  // ⬅️ UPDATED URL
-      return response.data;
-    } catch (error: any) {
-      console.error("Error fetching stocks:", error);
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch stocks");
-    }
+export const fetchStocks = createAsyncThunk('stocks/fetchStocks', async () => {
+  const response = await axios.get('http://localhost:3000/api/stocks');
+  return response.data;
+});
+
+export const fetchStockData = createAsyncThunk(
+  'stocks/fetchStockData',
+  async ({ id, duration }: { id: string; duration: string }) => {
+    const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });
+    return { id, duration, data: response.data };
   }
 );
 
-export const fetchStockData = createAsyncThunk<
-  { id: string; duration: string; data: StockEntry[] },
-  { id: string; duration: string }
->(
-  "stocks/fetchData",
-  async ({ id, duration }, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });  // ⬅️ UPDATED URL
-      return { id, duration, data: response.data };
-    } catch (error: any) {
-      console.error("Error fetching stock data:", error);
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch stock data");
-    }
-  }
-);
-
-// ✅ Redux slice
 const stockSlice = createSlice({
-  name: "stocks",
+  name: 'stocks',
   initialState,
   reducers: {
-    setSelectedStock: (state, action: PayloadAction<Stock | null>) => {
+    setSelectedStock(state, action: PayloadAction<Stock | null>) {
       state.selectedStock = action.payload;
-      state.selectedDuration = null;
-      state.stockData = {}; // ✅ Clear stock data when switching stocks
     },
-    setSelectedDuration: (state, action: PayloadAction<string>) => {
+    setSelectedDuration(state, action: PayloadAction<string | null>) {
       state.selectedDuration = action.payload;
+    },
+    setStockData(state, action: PayloadAction<{ id: string; duration: string; data: StockEntry[] }>) {
+      const { id, duration, data } = action.payload;
+      if (!state.stockData[id]) {
+        state.stockData[id] = {};
+      }
+      state.stockData[id][duration] = data;
     },
   },
   extraReducers: (builder) => {
@@ -94,23 +70,32 @@ const stockSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchStocks.fulfilled, (state, action) => {
+        state.stocks = action.payload;
         state.loading = false;
-        state.stocks = action.payload.slice(); // ✅ Immutable update
       })
       .addCase(fetchStocks.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message || 'Failed to fetch stocks';
+      })
+      .addCase(fetchStockData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchStockData.fulfilled, (state, action) => {
         const { id, duration, data } = action.payload;
-        if (!state.stockData[id]) state.stockData[id] = {};
-        state.stockData[id][duration] = data.slice(); // ✅ Immutable update
+        if (!state.stockData[id]) {
+          state.stockData[id] = {};
+        }
+        state.stockData[id][duration] = data;
+        state.loading = false;
       })
       .addCase(fetchStockData.rejected, (state, action) => {
-        state.error = action.payload as string;
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch stock data';
       });
   },
 });
 
-export const { setSelectedStock, setSelectedDuration } = stockSlice.actions;
+export const { setSelectedStock, setSelectedDuration, setStockData } = stockSlice.actions;
+
 export default stockSlice.reducer;

@@ -1513,12 +1513,14 @@
     "2025-01-28 16:00:00": {
       "price": 128.99,
       "change": 66.52,
-      "change_percent": 1.0648
+      "change_percent": 1.0648,
+      "volume": 818830895
     },
     "2025-01-29 16:00:00": {
       "price": 128.99,
       "change": 66.52,
-      "change_percent": 1.0648
+      "change_percent": 1.0648,
+      "volume": 818830895
     }
   },
   "key_events": [],

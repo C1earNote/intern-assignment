@@ -1579,7 +1579,8 @@
     "2025-01-28 16:00:00": {
       "price": 128.8625,
       "change": 122.9525,
-      "change_percent": 20.8041
+      "change_percent": 20.8041,
+      "volume": 825973564
     }
   },
   "key_events": [],
