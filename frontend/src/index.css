@@ -10,19 +10,15 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f7fa, #c3cfe2); /* Gradient background */
+  background: linear-gradient(135deg, #f5f7fa, #c3cfe2); /* Add gradient background */
   color: #333;
   line-height: 1.6;
   padding: 20px;
-  
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Align at the top to allow scrolling */
-  
-  min-height: 100vh; /* Ensures the page fills at least the full viewport height */
-  overflow: auto; /* Enables scrolling when content exceeds the viewport */
+  align-items: center;
+  height: 100vh;
 }
-
 
 #root {
   width: 80%;

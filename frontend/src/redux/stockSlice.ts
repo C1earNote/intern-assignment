@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import axios from "axios";
 
 // Define StockEntry type
 export interface StockEntry {
@@ -32,7 +32,7 @@ interface StockState {
   error: string | null;
 }
 
-// Initial state
+// ✅ Initial state
 const initialState: StockState = {
   stocks: [],
   selectedStock: null,
@@ -42,56 +42,49 @@ const initialState: StockState = {
   error: null,
 };
 
-// Fetch list of stocks
+// ✅ Fetch list of stocks
+// ✅ Change API URLs to match your backend
 export const fetchStocks = createAsyncThunk<Stock[], void>(
-  'stocks/fetchAll',
+  "stocks/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('http://localhost:3000/api/stocks');
+      const response = await axios.get("http://localhost:3000/api/stocks");  // ⬅️ UPDATED URL
       return response.data;
     } catch (error: any) {
-      console.error('Error fetching stocks:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch stocks');
+      console.error("Error fetching stocks:", error);
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch stocks");
     }
   }
 );
 
-// Fetch stock data for a specific duration
 export const fetchStockData = createAsyncThunk<
   { id: string; duration: string; data: StockEntry[] },
   { id: string; duration: string }
 >(
-  'stocks/fetchData',
+  "stocks/fetchData",
   async ({ id, duration }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });
+      const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });  // ⬅️ UPDATED URL
       return { id, duration, data: response.data };
     } catch (error: any) {
-      console.error('Error fetching stock data:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch stock data');
+      console.error("Error fetching stock data:", error);
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch stock data");
     }
   }
 );
 
-// Redux slice
+// ✅ Redux slice
 const stockSlice = createSlice({
-  name: 'stocks',
+  name: "stocks",
   initialState,
   reducers: {
     setSelectedStock: (state, action: PayloadAction<Stock | null>) => {
       state.selectedStock = action.payload;
       state.selectedDuration = null;
-      state.stockData = {}; // Clear stock data when switching stocks
+      state.stockData = {}; // ✅ Clear stock data when switching stocks
     },
-    setSelectedDuration: (state, action: PayloadAction<string | null>) => {
+    setSelectedDuration: (state, action: PayloadAction<string>) => {
       state.selectedDuration = action.payload;
-    },
-    setStockData: (state, action: PayloadAction<{ id: string; duration: string; data: StockEntry[] }>) => {
-      const { id, duration, data } = action.payload;
-      if (!state.stockData[id]) {
-        state.stockData[id] = {};
-      }
-      state.stockData[id][duration] = data;
     },
   },
   extraReducers: (builder) => {
@@ -100,32 +93,24 @@ const stockSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchStocks.fulfilled, (state, action: PayloadAction<Stock[]>) => {
+      .addCase(fetchStocks.fulfilled, (state, action) => {
         state.loading = false;
-        state.stocks = action.payload;
+        state.stocks = action.payload.slice(); // ✅ Immutable update
       })
       .addCase(fetchStocks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(fetchStockData.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchStockData.fulfilled, (state, action: PayloadAction<{ id: string; duration: string; data: StockEntry[] }>) => {
+      .addCase(fetchStockData.fulfilled, (state, action) => {
         const { id, duration, data } = action.payload;
-        if (!state.stockData[id]) {
-          state.stockData[id] = {};
-        }
-        state.stockData[id][duration] = data;
-        state.loading = false;
+        if (!state.stockData[id]) state.stockData[id] = {};
+        state.stockData[id][duration] = data.slice(); // ✅ Immutable update
       })
       .addCase(fetchStockData.rejected, (state, action) => {
-        state.loading = false;
         state.error = action.payload as string;
       });
   },
 });
 
-export const { setSelectedStock, setSelectedDuration, setStockData } = stockSlice.actions;
+export const { setSelectedStock, setSelectedDuration } = stockSlice.actions;
 export default stockSlice.reducer;

@@ -1,21 +1,15 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { createServer } from "http";
-import { Server } from "socket.io";
-import { getAllStockMeta, pollStock, Status, setSocketServer } from "./main/service";
+import { getAllStockMeta, pollStock, Status } from "./main/service";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Create an HTTP server and attach Socket.IO
-const server = createServer(app);
-const io = new Server(server, {
-  cors: { origin: "http://localhost:3001", credentials: true },
-});
+app.use(cors({
+  origin: 'http://localhost:3001',
+  credentials: true
+}));
 
-setSocketServer(io);
-
-app.use(cors({ origin: "http://localhost:3001", credentials: true }));
 app.use(express.json());
 
 app.get("/api/stocks", (req: Request, res: Response) => {
@@ -39,16 +33,19 @@ app.post("/api/stocks/:id", (req: Request, res: Response) => {
 
     const result = pollStock({ id: stockId, duration });
 
-    // Emit real-time data to connected clients
-    if (result.status === Status.COMPLETE) {
-      io.emit("stockUpdate", { stockId, duration, data: result.data });
-      return res.json(result.data);
-    } else if (result.status === Status.IN_PROGRESS) {
-      return res.json(result.data);
-    } else if (result.status === Status.STARTING) {
-      return res.json(result.data);
-    } else if (result.status === Status.ERROR) {
-      return res.status(400).json({ error: result.message });
+    switch (result.status) {
+      case Status.COMPLETE:
+      case Status.IN_PROGRESS:
+        return res.json(result.data);
+      
+      case Status.ERROR:
+        return res.status(404).json({ error: result.message });
+      
+      case Status.STARTING:
+        return res.status(202).json({ message: "Data collection starting" });
+      
+      default:
+        return res.status(500).json({ error: "Unknown status" });
     }
   } catch (error) {
     console.error("Error fetching stock data:", error);
@@ -56,15 +53,6 @@ app.post("/api/stocks/:id", (req: Request, res: Response) => {
   }
 });
 
-// WebSocket connection handling
-io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
-  });
-});
-
-server.listen(port, () => {
+app.listen(port, () => {
   console.log(`🚀 Server is running on http://localhost:${port}`);
 });
