@@ -27,7 +27,7 @@ function App() {
           <Container>
             <Box my={4}>
               <Typography variant="h2" component="h1" gutterBottom>
-                Stock Visualiser
+                Stock Dashboard
               </Typography>
               <StockSelector />
               <StockChart />

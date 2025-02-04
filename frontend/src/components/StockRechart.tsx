@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -9,26 +9,16 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Typography, Box } from '@mui/material';
+import { Box } from '@mui/material';
 import { StockEntry } from '../types';
 
 interface StockRechartProps {
   data: StockEntry[];
-  duration: string; // Added duration prop to display inside the chart
+  duration: string;
 }
 
 const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
-  const formatTooltipValue = (value: number, name: string) => {
-    if (name === 'Price') {
-      return [`$${value.toFixed(2)}`, 'Price'];
-    }
-    return [value.toFixed(0), 'Volume'];
-  };
-
-  const formatLabel = (label: string | number) => {
-    const date = new Date(label);
-    return isNaN(date.getTime()) ? String(label) : date.toLocaleDateString();
-  };
+  const memoizedData = useMemo(() => data, [data]);
 
   return (
     <Box
@@ -40,17 +30,16 @@ const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
         boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       }}
     >
-      <Typography variant="h6" gutterBottom sx={{ textAlign: 'center' }}>
-        {duration.toUpperCase()} Stock Chart
-      </Typography>
+      {/* Removed the chart title */}
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+        <LineChart data={memoizedData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-          <XAxis dataKey="timestamp" tick={{ fill: '#666' }} tickFormatter={formatLabel} />
+          <XAxis dataKey="timestamp" tick={{ fill: '#666' }} />
           <YAxis yAxisId="left" tick={{ fill: '#666' }} tickFormatter={(value) => `$${value}`} />
           <YAxis yAxisId="right" orientation="right" tick={{ fill: '#666' }} tickFormatter={(value) => `${value}`} />
-          <Tooltip formatter={(value, name) => formatTooltipValue(value as number, name as string)} labelFormatter={formatLabel} />
+          <Tooltip />
           <Legend />
+          
           <Line
             yAxisId="left"
             type="monotone"
@@ -59,7 +48,8 @@ const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
             stroke="#2563eb"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 5, stroke: '#2563eb', strokeWidth: 2, fill: 'white' }}
+            isAnimationActive
+            animationDuration={500} // Smooth transition for updates
           />
           <Line
             yAxisId="right"
@@ -69,7 +59,8 @@ const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
             stroke="#82ca9d"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 5, stroke: '#82ca9d', strokeWidth: 2, fill: 'white' }}
+            isAnimationActive
+            animationDuration={500} // Smooth transition for updates
           />
         </LineChart>
       </ResponsiveContainer>
