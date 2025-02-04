@@ -1,32 +1,80 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
+import { Typography, Box } from '@mui/material';
 import { StockEntry } from '../types';
-import { format } from 'date-fns';
 
 interface StockRechartProps {
   data: StockEntry[];
-  duration: string;
+  duration: string; // Added duration prop to display inside the chart
 }
 
 const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
-  const formatXAxis = (tickItem: string) => {
-    return format(new Date(tickItem), 'dd/MM/yyyy'); // Format date as 'dd/MM/yyyy'
+  const formatTooltipValue = (value: number, name: string) => {
+    if (name === 'Price') {
+      return [`$${value.toFixed(2)}`, 'Price'];
+    }
+    return [value.toFixed(0), 'Volume'];
+  };
+
+  const formatLabel = (label: string | number) => {
+    const date = new Date(label);
+    return isNaN(date.getTime()) ? String(label) : date.toLocaleDateString();
   };
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="timestamp" tickFormatter={formatXAxis} label={{ value: 'Date', position: 'insideBottomRight', offset: -5 }} />
-        <YAxis yAxisId="left" label={{ value: 'Price', angle: -90, position: 'insideLeft' }} />
-        <YAxis yAxisId="right" orientation="right" label={{ value: 'Volume', angle: -90, position: 'insideRight' }} />
-        <Tooltip contentStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #ccc' }} />
-        <Legend verticalAlign="top" height={36} />
-        <Line yAxisId="left" type="monotone" dataKey="price" stroke="#8884d8" isAnimationActive={false} dot={false} />
-        <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#82ca9d" isAnimationActive={false} dot={false} />
-      </LineChart>
-    </ResponsiveContainer>
+    <Box
+      className="chart-container"
+      sx={{
+        padding: '16px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }}
+    >
+      <Typography variant="h6" gutterBottom sx={{ textAlign: 'center' }}>
+        {duration.toUpperCase()} Stock Chart
+      </Typography>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+          <XAxis dataKey="timestamp" tick={{ fill: '#666' }} tickFormatter={formatLabel} />
+          <YAxis yAxisId="left" tick={{ fill: '#666' }} tickFormatter={(value) => `$${value}`} />
+          <YAxis yAxisId="right" orientation="right" tick={{ fill: '#666' }} tickFormatter={(value) => `${value}`} />
+          <Tooltip formatter={(value, name) => formatTooltipValue(value as number, name as string)} labelFormatter={formatLabel} />
+          <Legend />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="price"
+            name="Price"
+            stroke="#2563eb"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 5, stroke: '#2563eb', strokeWidth: 2, fill: 'white' }}
+          />
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="volume"
+            name="Volume"
+            stroke="#82ca9d"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 5, stroke: '#82ca9d', strokeWidth: 2, fill: 'white' }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </Box>
   );
 };
 
-export default React.memo(StockRechart);
+export default StockRechart;
