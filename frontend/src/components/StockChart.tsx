@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { CircularProgress, Typography, Box } from '@mui/material';
 import StockRechart from './StockRechart';
@@ -6,7 +6,7 @@ import { RootState, AppDispatch } from '../redux/store';
 import { setStockData, fetchStockData } from '../redux/stockSlice';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3000'); // Ensure this URL matches your backend URL
+const socket = io('http://localhost:3000'); // Ensure this matches your backend URL
 
 const StockChart: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -15,26 +15,51 @@ const StockChart: React.FC = () => {
   const stockData = useSelector((state: RootState) => state.stocks.stockData);
   const loading = useSelector((state: RootState) => state.stocks.loading);
   const error = useSelector((state: RootState) => state.stocks.error);
+  const [polling, setPolling] = useState(false);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (selectedStock && selectedDuration) {
-      if (selectedDuration === "ALL") {
-        selectedStock.available.forEach((duration) => {
-          dispatch(fetchStockData({ id: selectedStock.id, duration }));
-        });
-      } else {
-        dispatch(fetchStockData({ id: selectedStock.id, duration: selectedDuration }));
+      const result = await dispatch(fetchStockData({ id: selectedStock.id, duration: selectedDuration }));
+      if (result.payload && typeof result.payload === 'object' && 'data' in result.payload) {
+        const data = (result.payload as { data: any[] }).data;
+        if (Array.isArray(data) && data.length > 0) {
+          dispatch(setStockData({ id: selectedStock.id, duration: selectedDuration, data }));
+        }
       }
     }
+  }, [dispatch, selectedStock, selectedDuration]);
 
-    socket.on('stockUpdate', ({ stockId, duration, data }) => {
+  useEffect(() => {
+    let pollingInterval: NodeJS.Timeout;
+
+    if (selectedStock && selectedDuration) {
+      setPolling(true);
+      fetchData();
+
+      pollingInterval = setInterval(() => {
+        fetchData();
+      }, 30000); // Poll every 30 seconds
+
+      return () => {
+        clearInterval(pollingInterval);
+        setPolling(false);
+      };
+    }
+  }, [fetchData, selectedStock, selectedDuration]);
+
+  useEffect(() => {
+    const handleStockUpdate = ({ stockId, duration, data }: { stockId: string; duration: string; data: any[] }) => {
       if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === "ALL")) {
-        dispatch(setStockData({ id: stockId, duration, data }));
+        if (Array.isArray(data) && data.length > 0) {
+          dispatch(setStockData({ id: stockId, duration, data }));
+        }
       }
-    });
+    };
+
+    socket.on('stockUpdate', handleStockUpdate);
 
     return () => {
-      socket.off('stockUpdate');
+      socket.off('stockUpdate', handleStockUpdate);
     };
   }, [dispatch, selectedStock, selectedDuration]);
 
@@ -47,6 +72,7 @@ const StockChart: React.FC = () => {
         className="blank-box"
         sx={{
           width: '80%',
+          height: '400px',
           margin: 'auto',
           padding: '20px',
           backgroundColor: 'white',
@@ -60,18 +86,26 @@ const StockChart: React.FC = () => {
   const durationsToShow = selectedDuration === "ALL" ? selectedStock.available : [selectedDuration];
 
   return (
-    <div className="chart-container">
-      <Typography variant="h5" gutterBottom>
-        {selectedStock.name}
-      </Typography>
+    <Box
+      className="chart-container"
+      sx={{
+        width: '80%',
+        margin: 'auto',
+        padding: '20px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
+        height: '100%', // Ensure the container height is consistent
+      }}
+    >
+      <Typography variant="h5" gutterBottom>{selectedStock.name}</Typography>
       {durationsToShow.map((duration) => {
-        if (duration === null) return null; // Ensure duration is not null
+        if (duration === null) return null;
         const dataset = stockData[selectedStock.id]?.[duration];
+
         return (
-          <Box key={duration} mb={4}>
-            <Typography variant="h6" gutterBottom>
-              {duration.toUpperCase()}
-            </Typography>
+          <Box key={duration} mb={4} sx={{ height: '400px' }}>
+            <Typography variant="h6" gutterBottom>{duration.toUpperCase()}</Typography>
             {dataset ? (
               <StockRechart data={dataset} duration={duration} />
             ) : (
@@ -80,7 +114,7 @@ const StockChart: React.FC = () => {
           </Box>
         );
       })}
-    </div>
+    </Box>
   );
 };
 

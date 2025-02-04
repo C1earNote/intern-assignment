@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { StockEntry } from '../types';
 
 interface StockDataState {
@@ -39,9 +39,14 @@ export const fetchStocks = createAsyncThunk('stocks/fetchStocks', async () => {
 
 export const fetchStockData = createAsyncThunk(
   'stocks/fetchStockData',
-  async ({ id, duration }: { id: string; duration: string }) => {
-    const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });
-    return { id, duration, data: response.data };
+  async ({ id, duration }: { id: string; duration: string }, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`http://localhost:3000/api/stocks/${id}`, { duration });
+      return { id, duration, data: response.data };
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      return rejectWithValue(axiosError.response?.data || 'Failed to fetch stock data');
+    }
   }
 );
 
@@ -91,7 +96,7 @@ const stockSlice = createSlice({
       })
       .addCase(fetchStockData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch stock data';
+        state.error = action.payload as string;
       });
   },
 });
