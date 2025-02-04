@@ -5,7 +5,6 @@ import StockRechart from './StockRechart';
 import { RootState, AppDispatch } from '../redux/store';
 import { setStockData, fetchStockData } from '../redux/stockSlice';
 import { io } from 'socket.io-client';
-//import { StockEntry } from '../types';
 
 const socket = io('http://localhost:3000'); // Ensure this URL matches your backend URL
 
