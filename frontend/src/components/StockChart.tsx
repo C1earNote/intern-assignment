@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { CircularProgress, Typography, Box } from '@mui/material';
 import StockRechart from './StockRechart';
 import { RootState, AppDispatch } from '../redux/store';
-import { fetchStockData } from '../redux/stockSlice';
+import { setStockData, fetchStockData } from '../redux/stockSlice';
 import { io } from 'socket.io-client';
-import { StockEntry } from '../types';
 
 const socket = io('http://localhost:3000'); // Ensure this URL matches your backend URL
 
@@ -13,16 +12,13 @@ const StockChart: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const selectedStock = useSelector((state: RootState) => state.stocks.selectedStock);
   const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
+  const stockData = useSelector((state: RootState) => state.stocks.stockData);
   const loading = useSelector((state: RootState) => state.stocks.loading);
   const error = useSelector((state: RootState) => state.stocks.error);
 
-  // Store the data incrementally
-  const [liveStockData, setLiveStockData] = useState<{ [duration: string]: StockEntry[] }>({});
-
   useEffect(() => {
     if (selectedStock && selectedDuration) {
-      // Initial fetch
-      if (selectedDuration === 'ALL') {
+      if (selectedDuration === "ALL") {
         selectedStock.available.forEach((duration) => {
           dispatch(fetchStockData({ id: selectedStock.id, duration }));
         });
@@ -31,16 +27,9 @@ const StockChart: React.FC = () => {
       }
     }
 
-    // Listen to socket updates for real-time data
-    socket.on('stockUpdate', ({ stockId, duration, data }: { stockId: string; duration: string; data: StockEntry[] }) => {
-      if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === 'ALL')) {
-        setLiveStockData((prev) => {
-          // Append new data to existing data for this duration
-          return {
-            ...prev,
-            [duration]: prev[duration] ? [...prev[duration], ...data] : data,
-          };
-        });
+    socket.on('stockUpdate', ({ stockId, duration, data }) => {
+      if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === "ALL")) {
+        dispatch(setStockData({ id: stockId, duration, data }));
       }
     });
 
@@ -68,7 +57,7 @@ const StockChart: React.FC = () => {
     );
   }
 
-  const durationsToShow = selectedDuration === 'ALL' ? selectedStock.available : [selectedDuration];
+  const durationsToShow = selectedDuration === "ALL" ? selectedStock.available : [selectedDuration];
 
   return (
     <div className="chart-container">
@@ -76,9 +65,8 @@ const StockChart: React.FC = () => {
         {selectedStock.name}
       </Typography>
       {durationsToShow.map((duration) => {
-        if (!duration) return null; // Ensure duration is not null
-
-        const dataset = liveStockData[duration];
+        if (duration === null) return null; // Ensure duration is not null
+        const dataset = stockData[selectedStock.id]?.[duration];
         return (
           <Box key={duration} mb={4}>
             <Typography variant="h6" gutterBottom>
