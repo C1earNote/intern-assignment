@@ -2,16 +2,15 @@ import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { CircularProgress, Typography, Box } from '@mui/material';
 import StockRechart from './StockRechart';
-import { RootState } from '../redux/store';
-import { setStockData } from '../redux/stockSlice';
-import axios from 'axios';
+import { RootState, AppDispatch } from '../redux/store';
+import { setStockData, fetchStockData } from '../redux/stockSlice';
 import { io } from 'socket.io-client';
 import { StockEntry } from '../types';
 
 const socket = io('http://localhost:3000'); // Ensure this URL matches your backend URL
 
 const StockChart: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const selectedStock = useSelector((state: RootState) => state.stocks.selectedStock);
   const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
   const stockData = useSelector((state: RootState) => state.stocks.stockData);
@@ -19,24 +18,18 @@ const StockChart: React.FC = () => {
   const error = useSelector((state: RootState) => state.stocks.error);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get('http://localhost:3000/api/stock-data');
-        const data = response.data;
-        const parsedData: StockEntry[] = Object.keys(data).map((timestamp) => ({
-          timestamp,
-          ...data[timestamp],
-        }));
-        dispatch(setStockData({ id: 'msft', duration: '6M', data: parsedData }));
-      } catch (error) {
-        console.error('Error fetching stock data:', error);
+    if (selectedStock && selectedDuration) {
+      if (selectedDuration === "ALL") {
+        selectedStock.available.forEach((duration) => {
+          dispatch(fetchStockData({ id: selectedStock.id, duration }));
+        });
+      } else {
+        dispatch(fetchStockData({ id: selectedStock.id, duration: selectedDuration }));
       }
-    };
-
-    fetchData();
+    }
 
     socket.on('stockUpdate', ({ stockId, duration, data }) => {
-      if (selectedStock?.id === stockId && selectedDuration === duration) {
+      if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === "ALL")) {
         dispatch(setStockData({ id: stockId, duration, data }));
       }
     });
@@ -65,23 +58,29 @@ const StockChart: React.FC = () => {
     );
   }
 
-  const dataset = stockData[selectedStock.id]?.[selectedDuration || ''];
+  const durationsToShow = selectedDuration === "ALL" ? selectedStock.available : [selectedDuration];
 
   return (
     <div className="chart-container">
       <Typography variant="h5" gutterBottom>
         {selectedStock.name}
       </Typography>
-      {dataset ? (
-        <Box mb={4}>
-          <Typography variant="h6" gutterBottom>
-            {selectedDuration?.toUpperCase()}
-          </Typography>
-          <StockRechart data={dataset} duration={selectedDuration || ''} />
-        </Box>
-      ) : (
-        <Typography>No data available</Typography>
-      )}
+      {durationsToShow.map((duration) => {
+        if (duration === null) return null; // Ensure duration is not null
+        const dataset = stockData[selectedStock.id]?.[duration];
+        return (
+          <Box key={duration} mb={4}>
+            <Typography variant="h6" gutterBottom>
+              {duration.toUpperCase()}
+            </Typography>
+            {dataset ? (
+              <StockRechart data={dataset} duration={duration} />
+            ) : (
+              <Typography>No data available</Typography>
+            )}
+          </Box>
+        );
+      })}
     </div>
   );
 };
