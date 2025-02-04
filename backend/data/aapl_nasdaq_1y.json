@@ -1514,6 +1514,19 @@
       "price": 238.26,
       "change": 46.53,
       "change_percent": 0.2427
+    },
+    "2025-01-29 16:00:00": {
+      "price": 229.86,
+      "change": 38.13,
+      "change_percent": 0.1989,
+      "volume": 94863418
+    }
+    ,
+    "2025-01-30 16:00:00": {
+      "price": 220.86,
+      "change": 38.13,
+      "change_percent": 0.1989,
+      "volume": 94863418
     }
   },
   "key_events": [],

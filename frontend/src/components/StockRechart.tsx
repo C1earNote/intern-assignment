@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { Typography, Box } from '@mui/material';
 
 interface StockEntry {
   timestamp: string;
@@ -16,9 +17,10 @@ interface StockEntry {
 
 interface StockRechartProps {
   data: StockEntry[];
+  duration: string; // Added duration prop to display inside the chart
 }
 
-const StockRechart: React.FC<StockRechartProps> = ({ data }) => {
+const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
   const formatTooltipValue = (value: number) => [`$${value.toFixed(2)}`, 'Price'];
 
   const formatLabel = (label: string | number) => {
@@ -27,12 +29,20 @@ const StockRechart: React.FC<StockRechartProps> = ({ data }) => {
   };
 
   return (
-    <div className="chart-container">
+    <Box
+      className="chart-container"
+      sx={{
+        padding: '16px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }}
+    >
+      <Typography variant="h6" gutterBottom sx={{ textAlign: 'center' }}>
+        {duration.toUpperCase()} Stock Chart
+      </Typography>
       <ResponsiveContainer width="100%" height={170}>
-        <LineChart
-          data={data}
-          margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
-        >
+        <LineChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
           <XAxis dataKey="timestamp" tick={{ fill: '#666' }} tickFormatter={formatLabel} />
           <YAxis tick={{ fill: '#666' }} tickFormatter={(value) => `$${value}`} />
@@ -47,7 +57,7 @@ const StockRechart: React.FC<StockRechartProps> = ({ data }) => {
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </Box>
   );
 };
 
