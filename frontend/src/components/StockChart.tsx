@@ -5,29 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StockRechart from './StockRechart';
 import { RootState } from '../redux/store';
 import { io } from 'socket.io-client';
+import axios from 'axios';
 import { StockEntry } from '../types';
 
-// Socket connection to the backend
 const socket = io('http://localhost:3000'); // Ensure this matches your backend URL
 
-// Fetch stock data for a specific duration
+// ✅ Fetch stock data from API (supports incremental updates)
 const fetchStockData = async ({ stockId, duration }: { stockId: string; duration: string }) => {
-  const response = await fetch(`http://localhost:3000/api/stocks/${stockId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ duration }),
-  });
-  return response.json();
-};
-
-// Fetch all stock data for all durations
-const fetchAllStockData = async (stockId: string) => {
-  const response = await fetch(`http://localhost:3000/api/stocks/${stockId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ duration: 'ALL' }),
-  });
-  return response.json(); // Expected format: { '1Y': [], '5Y': [], '6M': [] }
+  const response = await axios.post(`http://localhost:3000/api/stocks/${stockId}`, { duration });
+  return response.data;
 };
 
 const StockChart: React.FC = () => {
@@ -35,23 +21,20 @@ const StockChart: React.FC = () => {
   const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
   const queryClient = useQueryClient();
 
-  // Fetch stock data every 5 seconds (incremental updates)
+  // **Fetch stock data every 5 seconds (incremental updates)**
   const { data: stockData, isLoading, error } = useQuery({
     queryKey: ['stockData', selectedStock?.id, selectedDuration],
-    queryFn: () => {
-      return selectedDuration === 'ALL'
-        ? fetchAllStockData(selectedStock!.id)
-        : fetchStockData({ stockId: selectedStock!.id, duration: selectedDuration! });
-    },
-    enabled: !!selectedStock,
-    refetchInterval: 5000, // Poll every 5 seconds
-    placeholderData: (previousData) => previousData, // Prevent flickering
+    queryFn: () => fetchStockData({ stockId: selectedStock!.id, duration: selectedDuration! }),
+    enabled: !!selectedStock && !!selectedDuration,
+    refetchInterval: 5000, // **Poll every 5 seconds**
+    placeholderData: (previousData) => previousData, // ✅ Prevents flickering & keeps previous data while fetching
   });
 
+  // ✅ Mutation to append new data instead of replacing it
   const mutation = useMutation({
     mutationFn: async ({ stockId, duration, newData }: { stockId: string; duration: string; newData: StockEntry[] }) => {
       queryClient.setQueryData(['stockData', stockId, duration], (oldData: StockEntry[] | undefined) => {
-        // Append new data, avoiding duplicates
+        // ✅ Append new data, avoiding duplicates
         const mergedData = [...(oldData || []), ...newData];
         return Array.from(new Map(mergedData.map(item => [item.timestamp, item])).values()); // Remove duplicate timestamps
       });
@@ -59,6 +42,7 @@ const StockChart: React.FC = () => {
     },
   });
 
+  // ✅ Listen for real-time updates from WebSocket
   useEffect(() => {
     socket.on('stockUpdate', ({ stockId, duration, data }) => {
       if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === 'ALL')) {
@@ -86,18 +70,7 @@ const StockChart: React.FC = () => {
         {selectedStock.name}
       </Typography>
       <Box sx={{ width: '100%', maxWidth: '1000px', height: '350px', overflow: 'hidden', padding: '10px' }}>
-        {selectedDuration === 'ALL' ? (
-          // Render multiple charts for each available duration
-          Object.keys(stockData).map((duration) => (
-            <Box key={duration} sx={{ marginBottom: '20px' }}>
-              <Typography variant="h6">{duration}</Typography>
-              <StockRechart data={stockData[duration]} duration={duration} />
-            </Box>
-          ))
-        ) : (
-          // Render a single chart for the selected duration
-          <StockRechart data={stockData} duration={selectedDuration!} />
-        )}
+        {stockData ? <StockRechart data={stockData} duration={selectedDuration!} /> : <Typography>No data available</Typography>}
       </Box>
     </div>
   );
