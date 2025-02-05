@@ -90,7 +90,7 @@ export const getAllStockMeta = () => {
     id: key,
     name: mapping[key].name,
     symbol: mapping[key].symbol,
-    available: mapping[key].available,
+    available: [...mapping[key].available, 'ALL'], // Add 'ALL' as an available duration
   }));
 };
 
@@ -100,6 +100,57 @@ export const pollStock = ({ id, duration }: { id: string; duration: string }): P
 
   if (!stock) return { status: Status.ERROR, message: "Stock not found" };
 
+  // Handle the 'ALL' duration
+  if (duration === 'ALL') {
+    const allDurationsData = Object.keys(stock).reduce((acc, key) => {
+      if (key !== 'name' && key !== 'symbol' && key !== 'available') {
+        acc[key] = stock[key as keyof StockData] as StockDurationData;
+      }
+      return acc;
+    }, {} as Record<string, StockDurationData>);
+
+    const allDurationDataPoints: Array<StockDataPoint & { timestamp: string }> = [];
+Object.keys(allDurationsData).forEach((key) => {
+  const durationData = allDurationsData[key];
+  if (!durationData?.time_series) return;
+
+  const dataPoints = Object.entries(durationData.time_series).map(([timestamp, data]) => ({
+    timestamp,
+    price: data.price,
+    change: data.change,
+    change_percent: data.change_percent,
+    volume: data.volume,
+  }));
+
+  // Merge all data into a single array
+  allDurationDataPoints.push(...dataPoints);
+});
+
+    Object.keys(allDurationsData).forEach((key) => {
+      const durationData = allDurationsData[key];
+      if (!durationData?.time_series) return;
+
+      const dataPoints = Object.entries(durationData.time_series).map(([timestamp, data]) => ({
+        timestamp,       // The key as timestamp
+        price: data.price, 
+        change: data.change,
+        change_percent: data.change_percent,
+        volume: data.volume,
+      }));
+
+      // Merge all data into a single array
+      allDurationDataPoints.push(...dataPoints);
+    });
+
+    // Emit real-time stock updates for all durations via WebSocket
+    if (io) {
+      io.emit("stockUpdate", { stockId: id, duration: 'ALL', data: allDurationDataPoints });
+    }
+
+    return { status: Status.COMPLETE, data: allDurationDataPoints };
+  }
+
+  // Existing handling for specific durations
   const durationKey = duration.toLowerCase();
   const durationData = stock[durationKey] as StockDurationData;
 
@@ -107,10 +158,13 @@ export const pollStock = ({ id, duration }: { id: string; duration: string }): P
 
   const dataPoints = Object.entries(durationData.time_series).map(([timestamp, data]) => ({
     timestamp,
-    ...data,
+    price: data.price,
+    change: data.change,
+    change_percent: data.change_percent,
+    volume: data.volume,
   }));
 
-  // Emit real-time stock updates via WebSocket
+  // Emit real-time stock updates for the specific duration
   if (io) {
     io.emit("stockUpdate", { stockId: id, duration, data: dataPoints });
   }
