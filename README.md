@@ -32,6 +32,12 @@ Eg.
 cd frontend
 yarn start
 ```
+- Put anything in the Login page (Because the service is not live so, email cannot be sent).
+- Put anything in the 2FA page (Reason same as 1st point).
+- Select the Conpany.
+- Select the duration.
+- Have fun looking at a fully functional dynamic stock chart.
+
 ### Add a demonstration video 
 https://youtu.be/4J_B9iab9U4
 
