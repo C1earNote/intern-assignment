@@ -26,24 +26,38 @@ const StockRechart: React.FC<StockRechartProps> = ({ data, duration }) => {
   };
 
   return (
-    <Box sx={{ width: '100%', height: '100%' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={memoizedData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-          {/* ✅ Apply the date-only formatter */}
-          <XAxis dataKey="timestamp" tick={{ fill: '#666' }} tickFormatter={formatLabel} />
-          <YAxis yAxisId="left" tick={{ fill: '#666' }} tickFormatter={(value) => `$${value}`} />
-          <YAxis yAxisId="right" orientation="right" tick={{ fill: '#666' }} tickFormatter={(value) => `${value}`} />
-          <Tooltip />
-          <Legend />
-          
-          {/* ✅ Disable animations */}
-          <Line yAxisId="left" type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#82ca9d" strokeWidth={2} dot={false} isAnimationActive={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </Box>
-  );
+    <div className="chart-container">
+      <Typography variant="h5" gutterBottom>
+        {selectedStock.name}
+      </Typography>
+  
+      {stockData &&
+        Object.keys(stockData).map((duration) => (
+          <Box key={duration} mb={4}>
+            <Typography variant="h6" gutterBottom>
+              {duration.toUpperCase()}
+            </Typography>
+            <div
+              className="chart-wrapper"
+              style={{
+                width: '100%',
+                maxWidth: '1000px',
+                height: '350px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+                padding: '10px',
+              }}
+            >
+              <StockRechart data={stockData[duration]} duration={duration} />
+            </div>
+          </Box>
+        ))}
+    </div>
+  );  
 };
 
 export default StockRechart;
