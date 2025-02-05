@@ -70,7 +70,7 @@ const StockChart: React.FC = () => {
         {selectedStock.name}
       </Typography>
       <Box sx={{ width: '100%', maxWidth: '1000px', height: '350px', overflow: 'hidden', padding: '10px' }}>
-        {stockData ? <StockRechart data={stockData} duration={selectedDuration!} /> : <Typography>No data available</Typography>}
+        {stockData ? <StockRechart data={stockData} duration={selectedDuration!} /> : <Typography></Typography>}
       </Box>
     </div>
   );
