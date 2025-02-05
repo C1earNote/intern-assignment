@@ -32,7 +32,7 @@ yarn start
 https://youtu.be/4J_B9iab9U4
 
 ### Instructions to run the backend API
-Install the required libraries 
+Install the required libraries and then:
 ```bash
 cd backend
 yarn dev
