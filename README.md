@@ -11,8 +11,8 @@
 - Used pre-built components and libraries (we use MUI and react-chartjs, but you are free to use any lib of your choice)
 
 ### Brownie points deserved 😋
-- if you can show multiple graphs at the same time(**Half done**, there's some issue)
-- if you can add login with a basic 2FA implementation (**Half done**)
+- Multiple graphs at the same time(**Half done**, there was some issue at last)
+- Added login with a basic 2FA implementation (**Half done**)
 _That makes one whole point right? ;)_
 
 
