@@ -1,85 +1,77 @@
 import React, { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { CircularProgress, Typography, Box } from '@mui/material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StockRechart from './StockRechart';
-import { RootState, AppDispatch } from '../redux/store';
-import { setStockData, fetchStockData } from '../redux/stockSlice';
+import { RootState } from '../redux/store';
 import { io } from 'socket.io-client';
+import axios from 'axios';
+import { StockEntry } from '../types';
 
-const socket = io('http://localhost:3000'); // Ensure this URL matches your backend URL
+const socket = io('http://localhost:3000'); // Ensure this matches your backend URL
+
+// ✅ Fetch stock data from API (supports incremental updates)
+const fetchStockData = async ({ stockId, duration }: { stockId: string; duration: string }) => {
+  const response = await axios.post(`http://localhost:3000/api/stocks/${stockId}`, { duration });
+  return response.data;
+};
 
 const StockChart: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
   const selectedStock = useSelector((state: RootState) => state.stocks.selectedStock);
   const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
-  const stockData = useSelector((state: RootState) => state.stocks.stockData);
-  const loading = useSelector((state: RootState) => state.stocks.loading);
-  const error = useSelector((state: RootState) => state.stocks.error);
+  const queryClient = useQueryClient();
 
+  // **Fetch stock data every 5 seconds (incremental updates)**
+  const { data: stockData, isLoading, error } = useQuery({
+    queryKey: ['stockData', selectedStock?.id, selectedDuration],
+    queryFn: () => fetchStockData({ stockId: selectedStock!.id, duration: selectedDuration! }),
+    enabled: !!selectedStock && !!selectedDuration,
+    refetchInterval: 5000, // **Poll every 5 seconds**
+    placeholderData: (previousData) => previousData, // ✅ Prevents flickering & keeps previous data while fetching
+  });
+
+  // ✅ Mutation to append new data instead of replacing it
+  const mutation = useMutation({
+    mutationFn: async ({ stockId, duration, newData }: { stockId: string; duration: string; newData: StockEntry[] }) => {
+      queryClient.setQueryData(['stockData', stockId, duration], (oldData: StockEntry[] | undefined) => {
+        // ✅ Append new data, avoiding duplicates
+        const mergedData = [...(oldData || []), ...newData];
+        return Array.from(new Map(mergedData.map(item => [item.timestamp, item])).values()); // Remove duplicate timestamps
+      });
+      return Promise.resolve();
+    },
+  });
+
+  // ✅ Listen for real-time updates from WebSocket
   useEffect(() => {
-    if (selectedStock && selectedDuration) {
-      if (selectedDuration === "ALL") {
-        selectedStock.available.forEach((duration) => {
-          dispatch(fetchStockData({ id: selectedStock.id, duration }));
-        });
-      } else {
-        dispatch(fetchStockData({ id: selectedStock.id, duration: selectedDuration }));
-      }
-    }
-
     socket.on('stockUpdate', ({ stockId, duration, data }) => {
-      if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === "ALL")) {
-        dispatch(setStockData({ id: stockId, duration, data }));
+      if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === 'ALL')) {
+        mutation.mutate({ stockId, duration, newData: data });
       }
     });
 
     return () => {
       socket.off('stockUpdate');
     };
-  }, [dispatch, selectedStock, selectedDuration]);
+  }, [selectedStock, selectedDuration]);
 
-  if (loading) return <div className="loading-indicator"><CircularProgress /></div>;
-  if (error) return <Typography color="error">{error}</Typography>;
+  if (isLoading) return <CircularProgress />;
+  if (error) return <Typography color="error">Failed to load stock data</Typography>;
 
   if (!selectedStock) {
     return (
-      <Box
-        className="blank-box"
-        sx={{
-          width: '80%',
-          margin: 'auto',
-          padding: '20px',
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
-        }}
-      />
+      <Box sx={{ width: '80%', margin: 'auto', padding: '20px', backgroundColor: 'white', borderRadius: '8px' }} />
     );
   }
-
-  const durationsToShow = selectedDuration === "ALL" ? selectedStock.available : [selectedDuration];
 
   return (
     <div className="chart-container">
       <Typography variant="h5" gutterBottom>
         {selectedStock.name}
       </Typography>
-      {durationsToShow.map((duration) => {
-        if (duration === null) return null; // Ensure duration is not null
-        const dataset = stockData[selectedStock.id]?.[duration];
-        return (
-          <Box key={duration} mb={4}>
-            <Typography variant="h6" gutterBottom>
-              {duration.toUpperCase()}
-            </Typography>
-            {dataset ? (
-              <StockRechart data={dataset} duration={duration} />
-            ) : (
-              <Typography>No data available</Typography>
-            )}
-          </Box>
-        );
-      })}
+      <Box sx={{ width: '100%', maxWidth: '1000px', height: '350px', overflow: 'hidden', padding: '10px' }}>
+        {stockData ? <StockRechart data={stockData} duration={selectedDuration!} /> : <Typography>No data available</Typography>}
+      </Box>
     </div>
   );
 };
