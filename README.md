@@ -5,9 +5,9 @@
 - Make it responsive and look good!
 
 ### Tech constraints followed
-- Use Redux Toolkit for managing global state, thunk for API calls
-- Don't drill props beyond level 2
-- Use pre-built components and libraries (we use MUI and react-chartjs, but you are free to use any lib of your choice)
+- Used Redux Toolkit for managing global state, thunk for API calls
+- Didn't drill props beyond level 2
+- Used pre-built components and libraries (we use MUI and react-chartjs, but you are free to use any lib of your choice)
 
 ### Brownie points
 - if you can show multiple graphs at the same time(**Half done**, there's some issue)
