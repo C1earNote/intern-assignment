@@ -10,10 +10,31 @@ import { StockEntry } from '../types';
 
 const socket = io('http://localhost:3000'); // Ensure this matches your backend URL
 
-// ✅ Fetch stock data from API (supports incremental updates)
-const fetchStockData = async ({ stockId, duration }: { stockId: string; duration: string }) => {
-  const response = await axios.post(`http://localhost:3000/api/stocks/${stockId}`, { duration });
-  return response.data;
+// ✅ Fetch stock data (supports "ALL" durations)
+const fetchStockData = async ({
+  stockId,
+  duration,
+}: {
+  stockId: string;
+  duration: string;
+}): Promise<Record<string, StockEntry[]> | null> => {
+  if (duration === 'ALL') {
+    try {
+      const response = await axios.get(`http://localhost:3000/api/stocks/${stockId}/all`);
+      return response.data; // Expected format: { duration1: data1, duration2: data2, ... }
+    } catch (error) {
+      console.error('Error fetching stock data for ALL:', error);
+      return null;
+    }
+  } else {
+    try {
+      const response = await axios.post(`http://localhost:3000/api/stocks/${stockId}`, { duration });
+      return { [duration]: response.data }; // Ensure consistent structure
+    } catch (error) {
+      console.error('Error fetching stock data:', error);
+      return null;
+    }
+  }
 };
 
 const StockChart: React.FC = () => {
@@ -21,28 +42,53 @@ const StockChart: React.FC = () => {
   const selectedDuration = useSelector((state: RootState) => state.stocks.selectedDuration);
   const queryClient = useQueryClient();
 
-  // **Fetch stock data every 5 seconds (incremental updates)**
-  const { data: stockData, isLoading, error } = useQuery({
+  // ✅ Fetch stock data (polling every 5s)
+  const {
+    data: stockData,
+    isLoading,
+    error,
+  } = useQuery<Record<string, StockEntry[]> | null>({
     queryKey: ['stockData', selectedStock?.id, selectedDuration],
-    queryFn: () => fetchStockData({ stockId: selectedStock!.id, duration: selectedDuration! }),
+    queryFn: () =>
+      fetchStockData({
+        stockId: selectedStock!.id,
+        duration: selectedDuration!,
+      }),
     enabled: !!selectedStock && !!selectedDuration,
-    refetchInterval: 5000, // **Poll every 5 seconds**
-    placeholderData: (previousData) => previousData, // ✅ Prevents flickering & keeps previous data while fetching
+    refetchInterval: 5000,
+    placeholderData: (previousData) => previousData, // Prevents flickering
   });
 
-  // ✅ Mutation to append new data instead of replacing it
+  // ✅ Mutation for real-time updates
   const mutation = useMutation({
-    mutationFn: async ({ stockId, duration, newData }: { stockId: string; duration: string; newData: StockEntry[] }) => {
-      queryClient.setQueryData(['stockData', stockId, duration], (oldData: StockEntry[] | undefined) => {
-        // ✅ Append new data, avoiding duplicates
-        const mergedData = [...(oldData || []), ...newData];
-        return Array.from(new Map(mergedData.map(item => [item.timestamp, item])).values()); // Remove duplicate timestamps
+    mutationFn: async ({
+      stockId,
+      duration,
+      newData,
+    }: {
+      stockId: string;
+      duration: string;
+      newData: StockEntry[];
+    }) => {
+      queryClient.setQueryData(['stockData', stockId, duration], (oldData: Record<string, StockEntry[]> | null) => {
+        if (!oldData) return { [duration]: newData }; // Initialize if empty
+
+        const updatedData = {
+          ...oldData,
+          [duration]: [...(oldData[duration] || []), ...newData],
+        };
+
+        // Remove duplicate timestamps
+        updatedData[duration] = Array.from(new Map(updatedData[duration].map((item) => [item.timestamp, item])).values());
+
+        return updatedData;
       });
+
       return Promise.resolve();
     },
   });
 
-  // ✅ Listen for real-time updates from WebSocket
+  // ✅ Listen for WebSocket real-time updates
   useEffect(() => {
     socket.on('stockUpdate', ({ stockId, duration, data }) => {
       if (selectedStock?.id === stockId && (selectedDuration === duration || selectedDuration === 'ALL')) {
@@ -55,22 +101,43 @@ const StockChart: React.FC = () => {
     };
   }, [selectedStock, selectedDuration]);
 
-  if (isLoading) return <CircularProgress />;
-  if (error) return <Typography color="error">Failed to load stock data</Typography>;
-
-  if (!selectedStock) {
+  if (!selectedStock || !selectedDuration) {
     return (
-      <Box sx={{ width: '80%', margin: 'auto', padding: '20px', backgroundColor: 'white', borderRadius: '8px' }} />
+      <Typography variant="h6" sx={{ textAlign: 'center', marginTop: 4 }}>
+        Select a stock and duration to view the chart.
+      </Typography>
     );
   }
+
+  if (isLoading) return <CircularProgress sx={{ display: 'block', margin: 'auto', mt: 4 }} />;
+  if (error) return <Typography color="error">Failed to load stock data</Typography>;
 
   return (
     <div className="chart-container">
       <Typography variant="h5" gutterBottom>
         {selectedStock.name}
       </Typography>
-      <Box sx={{ width: '100%', maxWidth: '1000px', height: '350px', overflow: 'hidden', padding: '10px' }}>
-        {stockData ? <StockRechart data={stockData} duration={selectedDuration!} /> : <Typography>No data available</Typography>}
+      <Box sx={{ width: '100%', maxWidth: '1000px', overflowY: 'auto', maxHeight: '600px', padding: '10px' }}>
+        {stockData ? (
+          selectedDuration === 'ALL' ? (
+            // ✅ Loop through all durations and render multiple graphs
+            Object.entries(stockData).map(([duration, data]) => (
+              <Box key={duration} sx={{ marginBottom: '20px' }}>
+                <Typography variant="h6">{duration}</Typography>
+                <StockRechart data={data} duration={duration} />
+              </Box>
+            ))
+          ) : (
+            // ✅ Single graph for selected duration
+            stockData[selectedDuration] ? (
+              <StockRechart data={stockData[selectedDuration]} duration={selectedDuration} />
+            ) : (
+              <Typography>No data available</Typography>
+            )
+          )
+        ) : (
+          <Typography>No data available</Typography>
+        )}
       </Box>
     </div>
   );
