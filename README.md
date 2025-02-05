@@ -27,7 +27,7 @@ yarn start
 - Select the duration.
 - Have fun looking at a fully functional dynamic stock chart.
 
-### Add a demonstration video 
+### A demonstration video 📹
 https://youtu.be/4J_B9iab9U4
 
 ### Instructions to run the backend API
