@@ -10,7 +10,7 @@
 - Didn't drill props beyond level 2
 - Used pre-built components and libraries (we use MUI and react-chartjs, but you are free to use any lib of your choice)
 
-### Brownie points
+### Brownie points deserved 😋
 - if you can show multiple graphs at the same time(**Half done**, there's some issue)
 - if you can add login with a basic 2FA implementation (**Half done**)
 _That makes one whole point right? ;)_
@@ -25,8 +25,8 @@ yarn start
 ```
 - Put anything in the Login page (Because the service is not live so, email cannot be sent).
 - Put anything in the 2FA page (Reason same as 1st point).
-- Select the Conpany.
-- Select the duration.
+- Select the Company.
+- Select the Duration.
 - Have fun looking at a fully functional dynamic stock chart.
 
 ### A demonstration video 📹
