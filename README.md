@@ -18,6 +18,7 @@ _That makes one whole point right? ;)_
 
 ## Running services
 ### Instructions to run the UI
+Install the required libraries and then:
 ```bash
 cd frontend
 yarn start
