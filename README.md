@@ -1,4 +1,4 @@
-# Challenge complete 
+# Challenge Completed
 ### What I did
 - A dropdown where the user can select a stock
 - A way to switch between durations for the selected stock
